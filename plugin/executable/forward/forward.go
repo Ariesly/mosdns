@@ -54,6 +54,7 @@ type Args struct {
 
 	// Global options.
 	Socks5       string `yaml:"socks5"`
+	Proxy        string `yaml:"proxy"`
 	SoMark       int    `yaml:"so_mark"`
 	BindToDevice string `yaml:"bind_to_device"`
 	Bootstrap    string `yaml:"bootstrap"`

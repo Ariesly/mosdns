@@ -65,6 +65,11 @@ type Opt struct {
 	// Not implemented for udp upstreams and doh upstreams with http/3.
 	Socks5 string
 
+	// proxy server that the upstream
+	// will connect though.
+	// Not implemented for udp upstreams and doh upstreams with http/3.
+	Proxy string
+
 	// SoMark sets the socket SO_MARK option in unix system.
 	SoMark int
 
@@ -167,7 +172,7 @@ func NewUpstream(addr string, opt Opt) (Upstream, error) {
 		dialAddr := getDialAddrWithPort(addrURL.Host, opt.DialAddr, 53)
 		to := transport.IOOpts{
 			DialFunc: func(ctx context.Context) (io.ReadWriteCloser, error) {
-				c, err := dialTCP(ctx, dialAddr, opt.Socks5, dialer)
+				c, err := dialTCP(ctx, dialAddr, getProxy(opt), dialer)
 				c = wrapConn(c, opt.EventObserver)
 				return c, err
 			},
@@ -193,7 +198,7 @@ func NewUpstream(addr string, opt Opt) (Upstream, error) {
 		dialAddr := getDialAddrWithPort(addrURL.Host, opt.DialAddr, 853)
 		to := transport.IOOpts{
 			DialFunc: func(ctx context.Context) (io.ReadWriteCloser, error) {
-				conn, err := dialTCP(ctx, dialAddr, opt.Socks5, dialer)
+				conn, err := dialTCP(ctx, dialAddr, getProxy(opt), dialer)
 				if err != nil {
 					return nil, err
 				}
@@ -254,7 +259,7 @@ func NewUpstream(addr string, opt Opt) (Upstream, error) {
 		} else {
 			t1 := &http.Transport{
 				DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) { // overwrite server addr
-					c, err := dialTCP(ctx, dialAddr, opt.Socks5, dialer)
+					c, err := dialTCP(ctx, dialAddr, getProxy(opt), dialer)
 					c = wrapConn(c, opt.EventObserver)
 					return c, err
 				},
@@ -305,6 +310,16 @@ func tryRemovePort(s string) string {
 		return s
 	}
 	return host
+}
+
+func getProxy(opt Opt) string {
+	proxyURLStr := ""
+	if len(opt.Proxy) > 0 {
+		proxyURLStr = opt.Proxy
+	} else if len(opt.Socks5) > 0 {
+		proxyURLStr = "socks5://" + opt.Socks5
+	}
+	return proxyURLStr
 }
 
 type udpWithFallback struct {
